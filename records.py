@@ -18,6 +18,9 @@ class recordLoader:
             for row in csv.DictReader(f):
                 for i in range(1, 5):
                     self.person_data[tools.get_ioi_name(row["team_member_" + str(i)])]["ioi"].append([tools.normalize(row["year"]), tools.get_ioi_medal(row["team_member_" + str(i)])])
+        with open(self.data_path / EXTRA_MEDALS_FILE, encoding="utf-8-sig", newline="") as f:
+            for row in csv.DictReader(f):
+                self.person_data[tools.normalize(row["name"])]["extra_medals"].append([tools.normalize(row["year"]), row["medal_index"], row["title"]])
         with open(self.data_path / PERSON_EXTRA_FILE, encoding="utf-8-sig", newline="") as f:
             for row in csv.DictReader(f):
                 self.person_data[tools.normalize(row["name"])]["note"].append([tools.normalize(row["note"])])
@@ -94,6 +97,8 @@ class recordLoader:
             ret += RTL + "• سال " + str(medal[0]) + " | " + "INOI" + " | " + MEDAL_TEXTS[medal[1]] + "\n"
         for medal in self.person_data[name]["ioi"]:
             ret += RTL + "• سال " + str(medal[0]) + " | " + "IOI" + " | " + MEDAL_TEXTS[medal[1]] + "\n"
+        for medal in self.person_data[name]["extra_medals"]:
+            ret += RTL + "• سال " + str(medal[0]) + " | " + medal[2] + " | " + MEDAL_TEXTS[medal[1]] + "\n"
         if "highschool" in self.person_data[name] and self.person_data[name]["highschool"][0][0]:
             ret += RTL + "\n" + "🏫 دبیرستان: " + self.person_data[name]["highschool"][0][0] + "\n"
         if "university" in self.person_data[name] and self.person_data[name]["university"][0][0]:

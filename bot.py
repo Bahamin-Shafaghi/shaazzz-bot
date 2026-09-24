@@ -16,8 +16,6 @@ from telegram.ext import (
     filters,
 )
 
-import tools
-from consts import *
 from records import *
 
 ROOT = Path(__file__).parent
@@ -76,7 +74,6 @@ def code(text):
     return f"<code>{escape(text)}</code>"
 
 
-# These panels are sent with parse_mode=HTML.
 def start_panel():
     return (
         RTL + "<b>🇮🇷 آرشیو المپیاد کامپیوتر ایران</b>" + "\n\n"

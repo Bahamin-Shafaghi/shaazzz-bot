@@ -1,2 +1,2 @@
-python-telegram-bot[socks]>=21.0,<22.0
+python-telegram-bot[socks]>=22.0
 python-dotenv>=1.0,<2.0
