@@ -1,0 +1,5 @@
+.env
+.venv/
+.bot.lock
+__pycache__/
+.vscode/
