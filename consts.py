@@ -18,5 +18,5 @@ COUNTRY_CODES = {
     "Japan": "JP", "Kazakhstan": "KZ", "Mexico": "MX", "Netherlands": "NL",
     "Poland": "PL", "Portugal": "PT", "Russia": "RU", "Singapore": "SG",
     "South Africa": "ZA", "South Korea": "KR", "Sweden": "SE", "Taiwan": "TW",
-    "Thailand": "TH", "Turkey": "TR", "United States": "US",
+    "Thailand": "TH", "Turkey": "TR", "United States": "US", "Uzbekistan": "UZ",
 }
