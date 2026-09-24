@@ -224,7 +224,12 @@ def main():
     token = os.getenv("TELEGRAM_BOT_TOKEN")
     if not token:
         raise RuntimeError("Set TELEGRAM_BOT_TOKEN in .env")
-    application = Application.builder().token(token).build()
+    builder = Application.builder().token(token)
+    proxy = os.getenv("TELEGRAM_PROXY_URL")
+    if proxy:
+        builder = builder.proxy(proxy).get_updates_proxy(proxy)
+        logger.info("Using proxy %s", proxy.split("@")[-1])
+    application = builder.build()
 
     application.add_handler(CommandHandler("start", start))
     application.add_handler(CommandHandler("help", help_command))
