@@ -95,8 +95,8 @@ class recordLoader:
         return sorted(person for person in self.person_data if key in tools.search_key(person))
 
     def get_similar(self, name):
-        keys = difflib.get_close_matches(tools.search_key(name), self.search_index.keys(), n=5, cutoff=0.6)
-        return [person for key in keys for person in self.search_index[key]][:5]
+        keys = difflib.get_close_matches(tools.search_key(name), self.search_index.keys(), n=MATCHING_COUNT, cutoff=MATCHING_THRESHOLD)
+        return [person for key in keys for person in self.search_index[key]][:MATCHING_COUNT]
 
     def get_years(self, competition):
         data = self.ioi_data if competition == "ioi" else self.national_data
@@ -112,7 +112,7 @@ class recordLoader:
             if int(medal[0]) >= FIRST_SORTED_YEAR:
                 if medal[1] == 0:
                     ret += RTL + "• سال " + str(medal[0]) + " | " + "INOI" + " | " + MEDALS[
-                        medal[1]] + " )طلا " + str(medal[2]) + "(\n"
+                        medal[1]] + " طلا " + str(medal[2]) + "\n"
                 elif medal[1] == 1:
                     ret += RTL + "• سال " + str(medal[0]) + " | " + "INOI" + " | " + MEDALS[
                         medal[1]] + " نقره " + str(medal[2] - self.national_data[medal[0]]["gold_count"][0]) + "\n"
