@@ -112,17 +112,17 @@ class recordLoader:
             if int(medal[0]) >= 1386:
                 if medal[1] == 0:
                     ret += RTL + "• سال " + str(medal[0]) + " | " + "INOI" + " | " + MEDAL_TEXTS[
-                        medal[1]] + " )طلا " + str(medal[1]) + "(\n"
+                        medal[1]] + " )طلا " + str(medal[2]) + "(\n"
                 elif medal[1] == 1:
                     ret += RTL + "• سال " + str(medal[0]) + " | " + "INOI" + " | " + MEDAL_TEXTS[
-                        medal[1]] + " )نقره " + str(medal[1] - self.national_data[medal[0]]["gold_count"][0]) + "(\n"
+                        medal[1]] + " )نقره " + str(medal[2] - self.national_data[medal[0]]["gold_count"][0]) + "(\n"
                 elif medal[1] == 2:
                     ret += RTL + "• سال " + str(medal[0]) + " | " + "INOI" + " | " + MEDAL_TEXTS[
-                        medal[1]] + " )نقره " + str(medal[1] - self.national_data[medal[0]]["gold_count"][0] -
+                        medal[1]] + " )برنز " + str(medal[2] - self.national_data[medal[0]]["gold_count"][0] -
                                                     self.national_data[medal[0]]["silver_count"][0]) + "(\n"
                 else:
                     ret += RTL + "• سال " + str(medal[0]) + " | " + "INOI" + " | " + MEDAL_TEXTS[
-                        medal[1]] + " )نقره " + str(medal[1] - self.national_data[medal[0]]["gold_count"][0] -
+                        medal[1]] + " )دیپلم " + str(medal[2] - self.national_data[medal[0]]["gold_count"][0] -
                                                     self.national_data[medal[0]]["silver_count"][0] -
                                                     self.national_data[medal[0]]["bronze_count"][0]) + "(\n"
             else:
