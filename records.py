@@ -11,9 +11,11 @@ class recordLoader:
         self.data_path = data_path
         
         self.person_data = defaultdict(lambda: defaultdict(list))
+        self.national_year_count = defaultdict(int)
         with open(self.data_path / NATIONAL_RECORDS_FILE, encoding="utf-8-sig", newline="") as f:
             for row in csv.DictReader(f):
-                self.person_data[tools.normalize(row["name"])]["national"].append([tools.normalize(row["year"]), tools.medal_to_index(row["category"])])
+                self.national_year_count[tools.normalize(row["year"])] += 1
+                self.person_data[tools.normalize(row["name"])]["national"].append([tools.normalize(row["year"]), tools.medal_to_index(row["category"]), self.national_year_count[tools.normalize(row["year"])]])
         with open(self.data_path / IOI_RECORDS_FILE, encoding="utf-8-sig", newline="") as f:
             for row in csv.DictReader(f):
                 for i in range(1, 5):
@@ -37,7 +39,16 @@ class recordLoader:
                     self.national_data[tools.normalize(row["year"])][row["category"] + "_count"].append(1)
                 else:
                     self.national_data[tools.normalize(row["year"])][row["category"] + "_count"][0] += 1
-        
+        for year in self.national_data:
+            if not self.national_data[year]["gold_count"]:
+                self.national_data[year]["gold_count"].append(0)
+            if not self.national_data[year]["silver_count"]:
+                self.national_data[year]["silver_count"].append(0)
+            if not self.national_data[year]["bronze_count"]:
+                self.national_data[year]["bronze_count"].append(0)
+            if not self.national_data[year]["honorable_mention_count"]:
+                self.national_data[year]["honorable_mention_count"].append(0)
+
         self.ioi_data = defaultdict(lambda: defaultdict(list))
         with open(self.data_path / IOI_RECORDS_FILE, encoding="utf-8-sig", newline="") as f:
             for row in csv.DictReader(f):
@@ -98,7 +109,24 @@ class recordLoader:
             return RTL + "این فرد در دیتابیس موجود نیست" + "\n\n" + FOOTER
         ret = RTL + "🔎 نتیجهٔ جست‌وجو برای «" + name + "»" + "\n\n" + RTL + "👤 " + name + "\n"
         for medal in self.person_data[name]["national"]:
-            ret += RTL + "• سال " + str(medal[0]) + " | " + "INOI" + " | " + MEDAL_TEXTS[medal[1]] + "\n"
+            if int(medal[0]) >= 1386:
+                if medal[1] == 0:
+                    ret += RTL + "• سال " + str(medal[0]) + " | " + "INOI" + " | " + MEDAL_TEXTS[
+                        medal[1]] + " )طلا " + str(medal[1]) + "(\n"
+                elif medal[1] == 1:
+                    ret += RTL + "• سال " + str(medal[0]) + " | " + "INOI" + " | " + MEDAL_TEXTS[
+                        medal[1]] + " )نقره " + str(medal[1] - self.national_data[medal[0]]["gold_count"][0]) + "(\n"
+                elif medal[1] == 2:
+                    ret += RTL + "• سال " + str(medal[0]) + " | " + "INOI" + " | " + MEDAL_TEXTS[
+                        medal[1]] + " )نقره " + str(medal[1] - self.national_data[medal[0]]["gold_count"][0] -
+                                                    self.national_data[medal[0]]["silver_count"][0]) + "(\n"
+                else:
+                    ret += RTL + "• سال " + str(medal[0]) + " | " + "INOI" + " | " + MEDAL_TEXTS[
+                        medal[1]] + " )نقره " + str(medal[1] - self.national_data[medal[0]]["gold_count"][0] -
+                                                    self.national_data[medal[0]]["silver_count"][0] -
+                                                    self.national_data[medal[0]]["bronze_count"][0]) + "(\n"
+            else:
+                ret += RTL + "• سال " + str(medal[0]) + " | " + "INOI" + " | " + MEDAL_TEXTS[medal[1]] + "\n"
         for medal in self.person_data[name]["ioi"]:
             ret += RTL + "• سال " + str(medal[0]) + " | " + "IOI" + " | " + MEDAL_TEXTS[medal[1]] + "\n"
         for medal in self.person_data[name]["extra_medals"]:
@@ -138,14 +166,10 @@ class recordLoader:
         if year not in self.national_data:
             return RTL + "این سال در دیتابیس موجود نیست" + "\n\n" + FOOTER
         ret = RTL + "🏅 نتایج INOI ملی " + str(year) + " (دورهٔ " + str(int(year) - NATIONAL_FIRST_YEAR) + ")" + "\n"
-        ret += "\n" + RTL + "🏅 مدال‌ها: " + MEDALS[0] + " " + str(self.national_data[year]["gold_count"][0])
-        if self.national_data[year]["silver_count"]:
-            ret += " | " + MEDALS[1] + " " + str(self.national_data[year]["silver_count"][0])
-        if self.national_data[year]["bronze_count"]:
-            ret += " | " + MEDALS[2] + " " + str(self.national_data[year]["silver_count"][0])
-        if self.national_data[year]["honorable_mention_count"]:
-            ret += " | " + MEDALS[3] + " " + str(self.national_data[year]["honorable_mention_count"][0])
-        ret += "\n\n"
+        ret += "\n" + RTL + "🏅 مدال‌ها: " + MEDALS[0] + " " + str(self.national_data[year]["gold_count"][0]) + " | " + \
+                                     MEDALS[1] + " " + str(self.national_data[year]["silver_count"][0]) + " | " + \
+                                     MEDALS[2] + " " + str(self.national_data[year]["silver_count"][0]) + " | " + \
+                                     MEDALS[3] + " " + str(self.national_data[year]["honorable_mention_count"][0]) + "\n\n"
         for medal in self.national_data[year]["people"]:
             ret += RTL + MEDAL_TEXTS[medal[1]] + " — " + medal[0] + "\n"
         return ret + "\n" + FOOTER
