@@ -35,7 +35,7 @@ class recordLoader:
         with open(self.data_path / NATIONAL_RECORDS_FILE, encoding="utf-8-sig", newline="") as f:
             for row in csv.DictReader(f):
                 self.national_data[tools.normalize(row["year"])]["people"].append([tools.normalize(row["name"]), tools.medal_to_index(row["category"])])
-                if len(self.national_data[tools.normalize(row["year"])][row["category"] + "_count"]) == 0:
+                if not self.national_data[tools.normalize(row["year"])][row["category"] + "_count"]:
                     self.national_data[tools.normalize(row["year"])][row["category"] + "_count"].append(1)
                 else:
                     self.national_data[tools.normalize(row["year"])][row["category"] + "_count"][0] += 1
@@ -56,7 +56,7 @@ class recordLoader:
                     self.ioi_data[tools.normalize(row["year"])]["people"].append([tools.get_ioi_name(row["team_member_" + str(i)]), tools.get_ioi_medal(row["team_member_" + str(i)])])
         with open(self.data_path / IOI_HISTORY_FILE, encoding="utf-8-sig", newline="") as f:
             for row in csv.DictReader(f):
-                if len(row["Gold"]) > 0: 
+                if row["Gold"]:
                     self.ioi_data[tools.normalize(row["Year"])]["host"].append(row["Host"])
                     self.ioi_data[tools.normalize(row["Year"])]["count"].append(int(float(row["Countries"])))
                     self.ioi_data[tools.normalize(row["Year"])]["gold_count"].append(int(float(row["Gold"])))
@@ -136,7 +136,7 @@ class recordLoader:
                                       MEDALS[1] + " " + str(self.ioi_data[year]["silver_count"][0]) + " | " + \
                                       MEDALS[2] + " " + str(self.ioi_data[year]["bronze_count"][0]) + "\n"
             ret += "\n" + RTL + "📈 رتبهٔ مدال: " + str(self.ioi_data[year]["medal_rank"][0]) + " | " + "رتبهٔ امتیاز: " + str(self.ioi_data[year]["score_rank"][0]) + "\n"
-        if len(self.ioi_data[year]["notes"][0]) > 0: 
+        if self.ioi_data[year]["notes"][0]: 
             ret += "\n" + RTL + "📝 یادداشت: " + self.ioi_data[year]["notes"][0] + "\n"
         return ret + "\n" + FOOTER
 
