@@ -29,7 +29,7 @@ class recordLoader:
                 self.person_data[tools.normalize(row["name"])]["codeforces"].append([tools.normalize(row["codeforces"])])
                 self.person_data[tools.normalize(row["name"])]["university"].append([tools.normalize(row["university"])])
         
-        self.ioi_data = defaultdict(lambda: defaultdict(list))
+        self.national_data = defaultdict(lambda: defaultdict(list))
         with open(self.data_path / NATIONAL_RECORDS_FILE, encoding="utf-8-sig", newline="") as f:
             for row in csv.DictReader(f):
                 self.national_data[tools.normalize(row["year"])]["people"].append([tools.normalize(row["name"]), tools.medal_to_index(row["category"])])
@@ -142,9 +142,9 @@ class recordLoader:
         if self.national_data[year]["silver_count"]:
             ret += " | " + MEDALS[1] + " " + str(self.national_data[year]["silver_count"][0])
         if self.national_data[year]["bronze_count"]:
-            ret += " | " + MEDALS[1] + " " + str(self.national_data[year]["silver_count"][0])
+            ret += " | " + MEDALS[2] + " " + str(self.national_data[year]["silver_count"][0])
         if self.national_data[year]["honorable_mention_count"]:
-            ret += " | " + MEDALS[1] + " " + str(self.national_data[year]["honorable_mention_count"][0])
+            ret += " | " + MEDALS[3] + " " + str(self.national_data[year]["honorable_mention_count"][0])
         ret += "\n\n"
         for medal in self.national_data[year]["people"]:
             ret += RTL + MEDAL_TEXTS[medal[1]] + " — " + medal[0] + "\n"
