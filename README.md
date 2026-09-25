@@ -1,6 +1,6 @@
-# Iran Computer Olympiad Archive Bot
+# Shaazzz Bot
 
-A Persian Telegram bot for browsing Iranian National Computer Olympiad results and Iran's IOI teams.
+A Persian Telegram bot for browsing Iranian National Computer Olympiad (INOI) results and Iran's IOI teams.
 
 ## Setup
 
@@ -8,28 +8,66 @@ A Persian Telegram bot for browsing Iranian National Computer Olympiad results a
 python -m venv .venv
 source .venv/bin/activate
 pip install -r requirements.txt
-export TELEGRAM_BOT_TOKEN='token-from-BotFather'
 python bot.py
 ```
 
-If the host cannot reach Telegram directly (the terminal will show timeouts
-while starting), configure a proxy before starting it:
+Create a `.env` file next to `bot.py`:
 
-```bash
-export TELEGRAM_PROXY_URL='http://proxy-host:8080'
-python bot.py
+```env
+TELEGRAM_BOT_TOKEN=token-from-BotFather
+# optional, if the host cannot reach Telegram directly:
+TELEGRAM_PROXY_URL=socks5://127.0.0.1:1080
 ```
 
-`socks5://proxy-host:1080` is also supported after installing the requirements.
-Put these values in `.env` if you want them to persist. The bot uses long polling, clears an old webhook on
-startup, and retains any pending updates during a restart.
+`TELEGRAM_PROXY_URL` accepts `http://host:port` or `socks5://[user:pass@]host:port` and is used for both API calls and `getUpdates`. MTProto (`t.me/proxy?...`) links are not supported; the Bot API needs an HTTP/SOCKS5 proxy. Requires Python 3.10+ (python-telegram-bot 22 also works on 3.14). Only one instance of the bot may poll at a time.
 
-Only one copy of the bot may run from this project directory at a time. A
-second `python bot.py` exits with an error instead of competing for Telegram
-updates. The lock uses only Python's standard library and is released
-automatically when the running process stops or crashes.
+## Commands
 
-The bot uses `data/ioi_records.csv`, `data/ioi_history.csv`, `data/national_records.csv`, and `data/person_notes.csv`. Replace the sample data with your complete files. Keep the headers exactly as shown:
+| Command | Description |
+| --- | --- |
+| `/start` | Main menu (with the ℹ️ راهنما button) |
+| `/help` | Help text |
+| `جستجو نام` | Search a person and show their profile; without a name the bot asks for one |
+| `جهانی` | IOI year grid; `جهانی 2025` shows that year's team directly |
+| `ملی` | INOI year grid; `ملی 1404` shows that year, `ملی 35` is interpreted as دوره 35 (= 1369 + 35) |
+
+Persian/Arabic digits are accepted everywhere; the bot always writes English digits. Plain text that is not one of these commands is ignored. Link previews are disabled on every message and each message ends with the channel/site footer.
+
+## Search
+
+Search lives in `search.py` (`personSearch`). Names are compared through `tools.search_key`, which unifies Persian spelling variants (ئ/ي/ى→ی, ك→ک, أ/إ/آ→ا, ؤ→و, ة→ه, drops hamza, tashkeel, ZWNJ and spaces, lowercases Latin), so `عطایی` finds `عطائی` and `محمدحسین` finds `محمد حسین`.
+
+An exact match opens the profile directly. Otherwise every name is scored and the top `MATCHING_COUNT` are offered as buttons:
+
+1. exact key match
+2. prefix match
+3. substring match
+4. subsequence match (missing letters, e.g. `محدحسین`)
+5. `difflib` similarity ratio ≥ `MATCHING_THRESHOLD`
+
+The query is also matched word by word against the name's words in any order (`باطنی محمد` finds `محمد حسین باطنی`); shorter names win ties. Suggestion buttons from the last 20 searches per user stay usable until the bot restarts. `MATCHING_COUNT` and `MATCHING_THRESHOLD` are in `consts.py`.
+
+## Code layout
+
+| File | Role |
+| --- | --- |
+| `bot.py` | Telegram handlers, keyboards, command parsing |
+| `records.py` | `recordLoader`: loads the CSVs, builds year/profile texts |
+| `search.py` | `personSearch`: exact/ranked fuzzy name search |
+| `tools.py` | digit normalisation, search key, دوره→year, flags |
+| `consts.py` | file names, medal labels, search constants, country codes |
+
+## Data
+
+All files are in `data/`, UTF-8 (a BOM is tolerated), with these headers:
+
+```csv
+# national_records.csv  (sorted by year descending; rows of one year keep gold→silver→bronze→honorable_mention order)
+year,category,name
+1404,gold,Name
+```
+
+`category` is `gold`, `silver`, `bronze` or `honorable_mention`. The per-medal rank shown in a profile (e.g. `🥇 طلا 3`) is the row position inside that medal group and is shown from `FIRST_SORTED_YEAR` (1386) on.
 
 ```csv
 # ioi_records.csv
@@ -37,29 +75,26 @@ year,team_member_1,team_member_2,team_member_3,team_member_4
 2025,🥇 Name,🥈 Name,🥈 Name,🥉 Name
 ```
 
+Each member is prefixed with the medal emoji (🥇 🥈 🥉 🎖) or nothing for no medal.
+
 ```csv
 # ioi_history.csv
 Year,Host,Countries,Gold,Silver,Bronze,Medal Rank,Score Rank,Notes
 2025,Bolivia,84,1,2,1,8,8,
 ```
 
-The optional IOI history row is shown below that year's team results. Set `IOI_HISTORY_CSV` to use a file at another path.
+Shown under the team of that year: host with flag (from `COUNTRY_CODES`), number of countries, medal counts, ranks and the note. Empty cells are skipped.
 
 ```csv
-# national_records.csv
-year,category,name
-1370,gold,Name
+# extra_medals.csv
+name,year,medal_index,title
 ```
+
+Additional medals (e.g. other olympiads) listed in a profile; `medal_index` is 0–3 for 🥇 🥈 🥉 🎖.
 
 ```csv
-# person_notes.csv
-name,note
-Name,متن یادداشت این شخص
+# person_extra.csv
+name,note,highschool,linkedin,codeforces,university
 ```
 
-`person_notes.csv` controls the optional `📝 یادداشت` section shown in each person's search history. Add one row per person; people without a non-empty `note` are shown without this section. Restart the bot after editing this file. Set `PERSON_NOTES_CSV` to use a file at another path. If a note contains commas or line breaks, wrap it in CSV double quotes.
-
-National categories `gold`, `silver`, `bronze`, and `honorable_mention` are displayed as Persian medal labels (including `🎖️ دیپلم افتخار`). The bot also accepts custom category text. National results are labelled `نتایج INOI ملی` in the interface. Every bot message ends with emoji-only links to the Shaazzz Telegram channel and website, with link previews disabled. When a search does not find an exact or partial name match, the bot offers selectable similar names.
-
-Commands: `/start`, `/person نام`, `/year ioi 2025`, and `/year national 1370`.
-Sending a plain name also searches the archive.
+Optional profile fields, shown only when non-empty: 🏫 دبیرستان, 🎓 دانشگاه, 💻 هندل کدفورسز, 🔗 لینکدین, 📝 یادداشت. Wrap values containing commas in double quotes. Restart the bot after editing any data file.
