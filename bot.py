@@ -133,11 +133,11 @@ async def edit(query, text, keyboard, parse_mode=None):
 
 async def person_result(message, context, name):
     name = tools.normalize(name)
-    if records.has_person(name):
+    if records.search.has_person(name):
         await send(message, records.get_profile(name), default_buttons())
         return
 
-    suggestions = records.get_matching(name) or records.get_similar(name)
+    suggestions = records.search.get_matching(name) or records.search.get_similar(name)
     if not suggestions:
         await send(message, RTL + f"برای «{name}» رکوردی پیدا نشد." + "\n\n" + FOOTER, default_buttons())
         return
