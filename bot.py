@@ -30,6 +30,7 @@ logger = logging.getLogger(__name__)
 records = recordLoader(ROOT / "data")
 
 SEARCH_WORD = "جستجو"
+MAX_SUGGESTION_LISTS = 20
 IOI_WORD = "جهانی"
 NATIONAL_WORD = "ملی"
 
@@ -142,7 +143,10 @@ async def person_result(message, context, name):
         return
 
     request_id = secrets.token_urlsafe(6)
-    context.user_data.setdefault("suggestions", {})[request_id] = suggestions
+    stored = context.user_data.setdefault("suggestions", {})
+    stored[request_id] = suggestions
+    while len(stored) > MAX_SUGGESTION_LISTS:
+        del stored[next(iter(stored))]
     keyboard = InlineKeyboardMarkup(
         [[InlineKeyboardButton(person, callback_data=f"suggest:{request_id}:{i}")]
          for i, person in enumerate(suggestions)] + [home_button()]
@@ -194,7 +198,6 @@ async def on_button(update, context):
     data = query.data
 
     if data == "home":
-        context.user_data.pop("suggestions", None)
         await edit(query, start_panel(), default_buttons(), parse_mode=ParseMode.HTML)
     elif data == "help":
         await edit(query, help_panel(), back_buttons(), parse_mode=ParseMode.HTML)
@@ -206,7 +209,7 @@ async def on_button(update, context):
     elif data.startswith("suggest:"):
         try:
             _, request_id, index = data.split(":", 2)
-            name = context.user_data.get("suggestions", {}).pop(request_id)[int(index)]
+            name = context.user_data.get("suggestions", {})[request_id][int(index)]
         except (KeyError, IndexError, ValueError):
             await edit(query, RTL + "این پیشنهاد دیگر در دسترس نیست. دوباره نام را جست‌وجو کنید." + "\n\n" + FOOTER, default_buttons())
             return
