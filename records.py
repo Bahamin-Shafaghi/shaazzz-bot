@@ -109,7 +109,7 @@ class recordLoader:
             return RTL + "این فرد در دیتابیس موجود نیست" + "\n\n" + FOOTER
         ret = RTL + "🔎 نتیجهٔ جست‌وجو برای «" + name + "»" + "\n\n" + RTL + "👤 " + name + "\n"
         for medal in self.person_data[name]["national"]:
-            if int(medal[0]) >= 1386:
+            if int(medal[0]) >= FIRST_SORTED_YEAR:
                 if medal[1] == 0:
                     ret += RTL + "• سال " + str(medal[0]) + " | " + "INOI" + " | " + MEDAL_TEXTS[
                         medal[1]] + " )طلا " + str(medal[2]) + "(\n"

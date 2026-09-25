@@ -8,6 +8,7 @@ IOI_RECORDS_FILE = "ioi_records.csv"
 NATIONAL_RECORDS_FILE = "national_records.csv"
 PERSON_EXTRA_FILE = "person_extra.csv"
 EXTRA_MEDALS_FILE = "extra_medals.csv"
+FIRST_SORTED_YEAR = 1386
 LTR = "\u200e"
 RTL = "\u200f"
 COUNTRY_CODES = {
