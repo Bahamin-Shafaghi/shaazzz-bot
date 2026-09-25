@@ -168,7 +168,7 @@ class recordLoader:
         ret = RTL + "🏅 نتایج INOI ملی " + str(year) + " (دورهٔ " + str(int(year) - NATIONAL_FIRST_YEAR) + ")" + "\n"
         ret += "\n" + RTL + "🏅 مدال‌ها: " + MEDALS[0] + " " + str(self.national_data[year]["gold_count"][0]) + " | " + \
                                      MEDALS[1] + " " + str(self.national_data[year]["silver_count"][0]) + " | " + \
-                                     MEDALS[2] + " " + str(self.national_data[year]["silver_count"][0]) + " | " + \
+                                     MEDALS[2] + " " + str(self.national_data[year]["bronze_count"][0]) + " | " + \
                                      MEDALS[3] + " " + str(self.national_data[year]["honorable_mention_count"][0]) + "\n\n"
         for medal in self.national_data[year]["people"]:
             ret += RTL + MEDAL_TEXTS[medal[1]] + " — " + medal[0] + "\n"
