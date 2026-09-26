@@ -119,6 +119,10 @@ class recordLoader:
             ret += RTL + "\n" + "📝 یادداشت: " + self.person_data[name]["note"][0][0] + "\n"
         return ret + "\n" + FOOTER
 
+    def get_extra(self, name):
+        name = tools.normalize(name)
+        return {field: self.person_data[name][field][0][0] if field in self.person_data[name] else "" for field in EXTRA_FIELDS}
+
     def get_ioi(self, year):
         year = tools.normalize(year)
         if year not in self.ioi_data:

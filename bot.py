@@ -10,12 +10,14 @@ from telegram.constants import ParseMode
 from telegram.error import BadRequest
 from telegram.ext import (
     Application,
+    ApplicationHandlerStop,
     CallbackQueryHandler,
     CommandHandler,
     MessageHandler,
     filters,
 )
 
+import edit as editor
 from records import *
 
 ROOT = Path(__file__).parent
@@ -28,6 +30,7 @@ logging.getLogger("httpx").setLevel(logging.WARNING)
 logger = logging.getLogger(__name__)
 
 records = recordLoader(ROOT / "data")
+ADMIN_GROUP_ID = int(os.getenv("TELEGRAM_ADMIN_GROUP_ID", "0"))
 
 SEARCH_WORD = "جستجو"
 MAX_SUGGESTION_LISTS = 20
@@ -67,6 +70,32 @@ def record_buttons(competition):
         [InlineKeyboardButton("‹ بازگشت به سال‌ها", callback_data=competition)],
         home_button(),
     ])
+
+
+def remember(context, kind, value):
+    """Store value under a short random id in user_data[kind] (callback_data is limited to 64 bytes)."""
+    stored = context.user_data.setdefault(kind, {})
+    key = secrets.token_urlsafe(6)
+    stored[key] = value
+    while len(stored) > MAX_SUGGESTION_LISTS:
+        del stored[next(iter(stored))]
+    return key
+
+
+def profile_buttons(context, name):
+    return InlineKeyboardMarkup([
+        [InlineKeyboardButton("✏️ ویرایش اطلاعات", callback_data=f"edit:{remember(context, 'profiles', name)}")],
+        [InlineKeyboardButton("ℹ️ راهنما", callback_data="help")],
+    ])
+
+
+def edit_buttons():
+    rows = [[InlineKeyboardButton(label, callback_data=f"field:{field}")] for field, label in EXTRA_FIELDS.items()]
+    rows.append([
+        InlineKeyboardButton("❌ لغو", callback_data="edit_cancel"),
+        InlineKeyboardButton("✅ ثبت", callback_data="edit_submit"),
+    ])
+    return InlineKeyboardMarkup(rows)
 
 
 # ---------- texts ----------
@@ -115,6 +144,30 @@ def year_panel(competition, year):
     return records.get_ioi(year) if competition == "ioi" else records.get_national(year)
 
 
+def edit_panel(editing):
+    current = records.get_extra(editing["name"])
+    ret = RTL + "✏️ ویرایش اطلاعات «" + editing["name"] + "»" + "\n\n"
+    for field, label in EXTRA_FIELDS.items():
+        if field in editing["changes"]:
+            ret += RTL + label + ": " + editing["changes"][field] + " 🆕" + "\n"
+        else:
+            ret += RTL + label + ": " + (current[field] or "—") + "\n"
+    if editing["waiting"]:
+        ret += "\n" + RTL + "✍️ مقدار جدید «" + EXTRA_FIELDS[editing["waiting"]] + "» را بفرستید." + "\n"
+    else:
+        ret += "\n" + RTL + "برای تغییر هر مورد روی دکمهٔ آن بزنید. تغییرات بعد از «ثبت» و تأیید مدیران اعمال می‌شوند." + "\n"
+    return ret + "\n" + FOOTER
+
+
+def review_panel(user, editing):
+    ret = "📝 درخواست ویرایش" + "\n\n"
+    ret += RTL + "👤 فرد: " + editing["name"] + "\n"
+    ret += RTL + "🆔 کاربر: " + str(user.id) + (" (@" + user.username + ")" if user.username else "") + "\n\n"
+    for field, value in editing["changes"].items():
+        ret += RTL + EXTRA_FIELDS[field] + ": " + value + "\n"
+    return ret + "\n" + RTL + "برای تأیید، به این پیام پاسخ دهید: /approve"
+
+
 # ---------- sending helpers ----------
 
 async def send(message, text, keyboard, parse_mode=None):
@@ -134,7 +187,8 @@ async def edit(query, text, keyboard, parse_mode=None):
 async def person_result(message, context, name):
     name = tools.normalize(name)
     if records.search.has_person(name):
-        await send(message, records.get_profile(name), default_buttons())
+        name = records.search.get_exact(name)[0]
+        await send(message, records.get_profile(name), profile_buttons(context, name))
         return
 
     suggestions = records.search.get_matching(name) or records.search.get_similar(name)
@@ -142,11 +196,7 @@ async def person_result(message, context, name):
         await send(message, RTL + f"برای «{name}» رکوردی پیدا نشد." + "\n\n" + FOOTER, default_buttons())
         return
 
-    request_id = secrets.token_urlsafe(6)
-    stored = context.user_data.setdefault("suggestions", {})
-    stored[request_id] = suggestions
-    while len(stored) > MAX_SUGGESTION_LISTS:
-        del stored[next(iter(stored))]
+    request_id = remember(context, "suggestions", suggestions)
     keyboard = InlineKeyboardMarkup(
         [[InlineKeyboardButton(person, callback_data=f"suggest:{request_id}:{i}")]
          for i, person in enumerate(suggestions)] + [home_button()]
@@ -186,6 +236,66 @@ async def on_text(update, context):
         await send(update.message, year_panel(competition, argument), record_buttons(competition))
 
 
+# ---------- editing ----------
+
+async def disable_panel(context, editing):
+    try:
+        await context.bot.edit_message_reply_markup(chat_id=editing["chat_id"], message_id=editing["message_id"], reply_markup=None)
+    except BadRequest:
+        pass
+
+
+async def send_edit_panel(context, editing):
+    message = await context.bot.send_message(editing["chat_id"], edit_panel(editing), reply_markup=edit_buttons(), disable_web_page_preview=True)
+    editing["message_id"] = message.message_id
+
+
+async def on_edit_input(update, context):
+    """Runs before every other handler: if this user is waiting to type a field value, consume the message."""
+    editing = context.user_data.get("editing")
+    if not editing or not editing["waiting"] or update.message.chat_id != editing["chat_id"]:
+        return
+    if not update.message.text:
+        await send(update.message, RTL + "لطفاً مقدار را به صورت متن بفرستید.", None)
+        raise ApplicationHandlerStop
+    editing["changes"][editing["waiting"]] = tools.normalize(update.message.text)
+    editing["waiting"] = None
+    await disable_panel(context, editing)
+    await send_edit_panel(context, editing)
+    raise ApplicationHandlerStop
+
+
+async def submit_edit(query, context, editing):
+    if not editing["changes"]:
+        await query.answer("هنوز تغییری نداده‌اید.", show_alert=True)
+        return
+    if not ADMIN_GROUP_ID:
+        await edit(query, RTL + "امکان ویرایش فعلاً فعال نیست." + "\n\n" + FOOTER, default_buttons())
+        return
+    review = await context.bot.send_message(ADMIN_GROUP_ID, review_panel(query.from_user, editing), disable_web_page_preview=True)
+    context.bot_data.setdefault("pending", {})[review.message_id] = {"name": editing["name"], "changes": editing["changes"], "approved": False}
+    del context.user_data["editing"]
+    await edit(query, RTL + "✅ تغییرات ثبت شد. پس از تأیید مدیران اعمال می‌شود." + "\n\n" + FOOTER, default_buttons())
+
+
+async def approve(update, context):
+    """/approve as a reply to a review message in the admin group; only the first approval of each message counts."""
+    replied = update.message.reply_to_message
+    if not replied:
+        await send(update.message, RTL + "روی پیام درخواست ویرایش ریپلای کنید.", None)
+        return
+    pending = context.bot_data.get("pending", {}).get(replied.message_id)
+    if not pending:
+        await send(update.message, RTL + "این پیام درخواست ویرایش معتبری نیست.", None)
+        return
+    if pending["approved"]:
+        return
+    pending["approved"] = True
+    editor.apply_changes(records.data_path, pending["name"], pending["changes"])
+    editor.reload_records(records)
+    await send(update.message, RTL + "✅ تأیید شد و اعمال گردید.", None)
+
+
 # ---------- buttons ----------
 
 async def on_button(update, context):
@@ -213,7 +323,31 @@ async def on_button(update, context):
         except (KeyError, IndexError, ValueError):
             await edit(query, RTL + "این پیشنهاد دیگر در دسترس نیست. دوباره نام را جست‌وجو کنید." + "\n\n" + FOOTER, default_buttons())
             return
-        await edit(query, records.get_profile(name), default_buttons())
+        await edit(query, records.get_profile(name), profile_buttons(context, name))
+    elif data.startswith("edit:"):
+        name = context.user_data.get("profiles", {}).get(data[5:])
+        if not name:
+            await edit(query, RTL + "این دکمه دیگر معتبر نیست. دوباره نام را جست‌وجو کنید." + "\n\n" + FOOTER, default_buttons())
+            return
+        old = context.user_data.get("editing")
+        if old:
+            await disable_panel(context, old)
+        editing = {"name": name, "changes": {}, "waiting": None, "chat_id": query.message.chat_id, "message_id": query.message.message_id}
+        context.user_data["editing"] = editing
+        await edit(query, edit_panel(editing), edit_buttons())
+    elif data.startswith("field:") or data in ("edit_cancel", "edit_submit"):
+        editing = context.user_data.get("editing")
+        if not editing or editing["message_id"] != query.message.message_id:
+            await edit(query, RTL + "این پنل ویرایش دیگر فعال نیست." + "\n\n" + FOOTER, default_buttons())
+            return
+        if data == "edit_cancel":
+            del context.user_data["editing"]
+            await edit(query, RTL + "❌ ویرایش لغو شد." + "\n\n" + FOOTER, default_buttons())
+        elif data == "edit_submit":
+            await submit_edit(query, context, editing)
+        else:
+            editing["waiting"] = data[6:]
+            await edit(query, edit_panel(editing), edit_buttons())
 
 
 async def on_error(update, context):
@@ -231,6 +365,8 @@ def main():
         logger.info("Using proxy %s", proxy.split("@")[-1])
     application = builder.build()
 
+    application.add_handler(MessageHandler(filters.ALL, on_edit_input), group=-1)
+    application.add_handler(CommandHandler("approve", approve, filters=filters.Chat(ADMIN_GROUP_ID)))
     application.add_handler(CommandHandler("start", start))
     application.add_handler(CommandHandler("help", help_command))
     application.add_handler(CallbackQueryHandler(on_button))

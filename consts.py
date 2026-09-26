@@ -11,6 +11,13 @@ EXTRA_MEDALS_FILE = "extra_medals.csv"
 FIRST_SORTED_YEAR = 1386
 MATCHING_THRESHOLD = 0.6
 MATCHING_COUNT = 5
+EXTRA_FIELDS = {
+    "highschool": "🏫 دبیرستان",
+    "university": "🎓 دانشگاه",
+    "codeforces": "💻 هندل کدفورسز",
+    "linkedin": "🔗 لینکدین",
+    "note": "📝 یادداشت",
+}
 LTR = "\u200e"
 RTL = "\u200f"
 COUNTRY_CODES = {

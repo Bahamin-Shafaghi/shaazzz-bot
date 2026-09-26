@@ -17,6 +17,8 @@ Create a `.env` file next to `bot.py`:
 TELEGRAM_BOT_TOKEN=token-from-BotFather
 # optional, if the host cannot reach Telegram directly:
 TELEGRAM_PROXY_URL=socks5://127.0.0.1:1080
+# group where edit requests are sent and approved with /approve (bot must be a member):
+TELEGRAM_ADMIN_GROUP_ID=-1001234567890
 ```
 
 `TELEGRAM_PROXY_URL` accepts `http://host:port` or `socks5://[user:pass@]host:port` and is used for both API calls and `getUpdates`. MTProto (`t.me/proxy?...`) links are not supported; the Bot API needs an HTTP/SOCKS5 proxy. Requires Python 3.10+ (python-telegram-bot 22 also works on 3.14). Only one instance of the bot may poll at a time.
@@ -47,6 +49,12 @@ An exact match opens the profile directly. Otherwise every name is scored and th
 
 The query is also matched word by word against the name's words in any order (`باطنی محمد` finds `محمد حسین باطنی`); shorter names win ties. Suggestion buttons from the last 20 searches per user stay usable until the bot restarts. `MATCHING_COUNT` and `MATCHING_THRESHOLD` are in `consts.py`.
 
+## Editing profiles
+
+Every profile has a `✏️ ویرایش اطلاعات` button. It opens an editing panel listing the five extra fields (current values, `—` when empty) with one button per field plus `❌ لغو` / `✅ ثبت`. Tapping a field puts the user in "waiting" mode: the next message they send (any text, even a command) becomes the new value; the old panel's buttons are removed and a fresh panel is sent showing the pending value marked `🆕`. Fields can be changed as many times as wanted; nothing is written until approval.
+
+`✅ ثبت` posts the request (user id, person, changed fields) to the group in `TELEGRAM_ADMIN_GROUP_ID` and tells the user it awaits admin approval. An admin approves by replying `/approve` to that message; `/approve` only works in that group, only as a reply to a pending request, and only the first approval of a request has any effect. On approval `edit.apply_changes(data_path, name, changes)` and `edit.reload_records(records)` in `edit.py` are called (currently stubs to be implemented). Pending requests and in-progress edits live in memory and are lost on restart.
+
 ## Code layout
 
 | File | Role |
@@ -54,6 +62,7 @@ The query is also matched word by word against the name's words in any order (`�
 | `bot.py` | Telegram handlers, keyboards, command parsing |
 | `records.py` | `recordLoader`: loads the CSVs, builds year/profile texts |
 | `search.py` | `personSearch`: exact/ranked fuzzy name search |
+| `edit.py` | applying approved profile edits to the CSV (stubs) |
 | `tools.py` | digit normalisation, search key, دوره→year, flags |
 | `consts.py` | file names, medal labels, search constants, country codes |
 
