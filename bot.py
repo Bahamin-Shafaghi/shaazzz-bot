@@ -14,7 +14,6 @@ from telegram.ext import (
     CallbackQueryHandler,
     CommandHandler,
     MessageHandler,
-    PicklePersistence,
     filters,
 )
 
@@ -151,10 +150,6 @@ def year_panel(competition, year):
     return records.get_ioi(year) if competition == "ioi" else records.get_national(year)
 
 
-def medal_line(medal):
-    return "سال " + medal[0] + " | " + medal[2] + " | " + MEDAL_TEXTS[medal[1]]
-
-
 def edit_panel(editing):
     current = records.get_extra(editing["name"])
     ret = RTL + "✏️ ویرایش اطلاعات «" + editing["name"] + "»" + "\n\n"
@@ -164,7 +159,7 @@ def edit_panel(editing):
         else:
             ret += RTL + label + ": " + (current[field] or "—") + "\n"
     for medal in editing["medals"]:
-        ret += RTL + "🎖 مدال جدید: " + medal_line(medal) + " 🆕" + "\n"
+        ret += RTL + editor.MEDAL_PREFIX + editor.medal_line(medal) + " 🆕" + "\n"
     ret += "\n" + RTL + "برای تغییر هر مورد روی دکمهٔ آن بزنید. تغییرات بعد از «ثبت» و تأیید مدیران اعمال می‌شوند." + "\n"
     return ret + "\n" + FOOTER
 
@@ -189,17 +184,6 @@ def parse_medal(text):
     if index >= len(MEDAL_TEXTS):
         return None
     return [parts[0], index, parts[1]]
-
-
-def review_panel(user, editing):
-    ret = "📝 درخواست ویرایش" + "\n\n"
-    ret += RTL + "👤 فرد: " + editing["name"] + "\n"
-    ret += RTL + "🆔 کاربر: " + str(user.id) + (" (@" + user.username + ")" if user.username else "") + "\n\n"
-    for field, value in editing["changes"].items():
-        ret += RTL + EXTRA_FIELDS[field] + ": " + value + "\n"
-    for medal in editing["medals"]:
-        ret += RTL + "🎖 مدال جدید: " + medal_line(medal) + "\n"
-    return ret + "\n" + RTL + "برای تأیید، به این پیام پاسخ دهید: /approve"
 
 
 # ---------- sending helpers ----------
@@ -317,29 +301,37 @@ async def submit_edit(query, context, editing):
     if not ADMIN_GROUP_ID:
         await edit(query, RTL + "امکان ویرایش فعلاً فعال نیست." + "\n\n" + FOOTER, default_buttons())
         return
-    review = await context.bot.send_message(ADMIN_GROUP_ID, review_panel(query.from_user, editing), disable_web_page_preview=True)
-    context.bot_data.setdefault("pending", {})[review.message_id] = {"name": editing["name"], "changes": editing["changes"], "medals": editing["medals"], "approved": False}
+    await context.bot.send_message(ADMIN_GROUP_ID, editor.review_text(query.from_user, editing["name"], editing["changes"], editing["medals"]), disable_web_page_preview=True)
     del context.user_data["editing"]
     await edit(query, RTL + "✅ تغییرات ثبت شد. پس از تأیید مدیران اعمال می‌شود." + "\n\n" + FOOTER, default_buttons())
 
 
 async def approve(update, context):
-    """/approve as a reply to a review message in the admin group; only the first approval of each message counts."""
+    """/approve as a reply to a review message in the admin group.
+
+    Nothing is stored: the changes are read back from the replied message itself (edit.parse_review),
+    and the message is edited to carry an approved mark so a second /approve is ignored.
+    """
     replied = update.message.reply_to_message
-    if not replied:
+    if not replied or replied.from_user.id != context.bot.id:
         await send(update.message, RTL + "روی پیام درخواست ویرایش ریپلای کنید.", None)
         return
-    pending = context.bot_data.get("pending", {}).get(replied.message_id)
-    if not pending:
+    parsed = editor.parse_review(replied.text)
+    if parsed is None:
         await send(update.message, RTL + "این پیام درخواست ویرایش معتبری نیست.", None)
         return
-    if pending["approved"]:
+    if editor.APPROVED_MARK in replied.text:
         return
-    pending["approved"] = True
-    if pending["changes"]:
-        editor.apply_changes(records.data_path, pending["name"], pending["changes"])
-    for medal in pending["medals"]:
-        editor.add_medal(records.data_path, pending["name"], *medal)
+    marked = replied.text.replace(editor.APPROVE_HINT, editor.APPROVED_MARK)
+    try:
+        await replied.edit_text(marked, disable_web_page_preview=True)
+    except BadRequest:
+        return
+    name, changes, medals = parsed
+    if changes:
+        editor.apply_changes(records.data_path, name, changes)
+    for medal in medals:
+        editor.add_medal(records.data_path, name, *medal)
     editor.reload_records(records)
     await send(update.message, RTL + "✅ تأیید شد و اعمال گردید.", None)
 
@@ -406,7 +398,7 @@ def main():
     token = os.getenv("TELEGRAM_BOT_TOKEN")
     if not token:
         raise RuntimeError("Set TELEGRAM_BOT_TOKEN in .env")
-    builder = Application.builder().token(token).persistence(PicklePersistence(ROOT / "bot_state.pickle"))
+    builder = Application.builder().token(token)
     proxy = os.getenv("TELEGRAM_PROXY_URL")
     if proxy:
         builder = builder.proxy(proxy).get_updates_proxy(proxy)
