@@ -1,6 +1,5 @@
 import logging
 import os
-import secrets
 from html import escape
 from pathlib import Path
 
@@ -33,7 +32,6 @@ records = recordLoader(ROOT / "data")
 ADMIN_GROUP_ID = int(os.getenv("TELEGRAM_ADMIN_GROUP_ID", "0"))
 
 SEARCH_WORD = "جستجو"
-MAX_SUGGESTION_LISTS = 20
 IOI_WORD = "جهانی"
 NATIONAL_WORD = "ملی"
 
@@ -72,19 +70,9 @@ def record_buttons(competition):
     ])
 
 
-def remember(context, kind, value):
-    """Store value under a short random id in user_data[kind] (callback_data is limited to 64 bytes)."""
-    stored = context.user_data.setdefault(kind, {})
-    key = secrets.token_urlsafe(6)
-    stored[key] = value
-    while len(stored) > MAX_SUGGESTION_LISTS:
-        del stored[next(iter(stored))]
-    return key
-
-
-def profile_buttons(context, name):
+def profile_buttons():
     return InlineKeyboardMarkup([
-        [InlineKeyboardButton("✏️ ویرایش اطلاعات", callback_data=f"edit:{remember(context, 'profiles', name)}")],
+        [InlineKeyboardButton("✏️ ویرایش اطلاعات", callback_data="edit")],
         [InlineKeyboardButton("ℹ️ راهنما", callback_data="help")],
     ])
 
@@ -206,7 +194,7 @@ async def person_result(message, context, name):
     name = tools.normalize(name)
     if records.search.has_person(name):
         name = records.search.get_exact(name)[0]
-        await send(message, records.get_profile(name), profile_buttons(context, name))
+        await send(message, records.get_profile(name), profile_buttons())
         return
 
     suggestions = records.search.get_matching(name) or records.search.get_similar(name)
@@ -214,9 +202,8 @@ async def person_result(message, context, name):
         await send(message, RTL + f"برای «{name}» رکوردی پیدا نشد." + "\n\n" + FOOTER, default_buttons())
         return
 
-    request_id = remember(context, "suggestions", suggestions)
     keyboard = InlineKeyboardMarkup(
-        [[InlineKeyboardButton(person, callback_data=f"suggest:{request_id}:{i}")]
+        [[InlineKeyboardButton(person, callback_data=f"suggest:{i}")]
          for i, person in enumerate(suggestions)] + [home_button()]
     )
     await send(message, RTL + f"منظورتان از «{name}» کدام فرد است؟" + "\n\n" + FOOTER, keyboard)
@@ -338,6 +325,24 @@ async def approve(update, context):
 
 # ---------- buttons ----------
 
+def suggestion_name(query):
+    """Name of the tapped suggestion = the text of button #i in the message's own keyboard."""
+    try:
+        row = int(query.data.split(":", 1)[1])
+        return query.message.reply_markup.inline_keyboard[row][0].text
+    except (AttributeError, IndexError, ValueError):
+        return None
+
+
+def profile_name(query):
+    """Name shown in a profile message = the text after '👤 ' on its own line."""
+    for line in (query.message.text or "").split("\n"):
+        line = line.replace(RTL, "").strip()
+        if line.startswith("👤 "):
+            return line[2:]
+    return None
+
+
 async def on_button(update, context):
     query = update.callback_query
     try:
@@ -357,16 +362,14 @@ async def on_button(update, context):
         _, competition, year = data.split(":", 2)
         await edit(query, year_panel(competition, year), record_buttons(competition))
     elif data.startswith("suggest:"):
-        try:
-            _, request_id, index = data.split(":", 2)
-            name = context.user_data.get("suggestions", {})[request_id][int(index)]
-        except (KeyError, IndexError, ValueError):
+        name = suggestion_name(query)
+        if not name or not records.search.has_person(name):
             await edit(query, RTL + "این پیشنهاد دیگر در دسترس نیست. دوباره نام را جست‌وجو کنید." + "\n\n" + FOOTER, default_buttons())
             return
-        await edit(query, records.get_profile(name), profile_buttons(context, name))
-    elif data.startswith("edit:"):
-        name = context.user_data.get("profiles", {}).get(data[5:])
-        if not name:
+        await edit(query, records.get_profile(name), profile_buttons())
+    elif data == "edit":
+        name = profile_name(query)
+        if not name or not records.search.has_person(name):
             await edit(query, RTL + "این دکمه دیگر معتبر نیست. دوباره نام را جست‌وجو کنید." + "\n\n" + FOOTER, default_buttons())
             return
         old = context.user_data.get("editing")
