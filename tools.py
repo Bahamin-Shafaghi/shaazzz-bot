@@ -1,18 +1,12 @@
 from consts import *
 
 
-DIGITS = str.maketrans("۰۱۲۳۴۵۶۷۸۹" "٠١٢٣٤٥٦٧٨٩", "0123456789" * 2)
-
-
 def english_digits(string):
     return string.translate(DIGITS)
 
 
 def normalize(string):
     return english_digits(string).strip(" ")
-
-
-PERSIAN_LETTERS = str.maketrans("ئيىكأإآؤة", "یییکاااوه", "\u0621\u064b\u064c\u064d\u064e\u064f\u0650\u0651\u0652\u0670\u200c\u200d\u200e\u200f ")
 
 
 def search_key(string):

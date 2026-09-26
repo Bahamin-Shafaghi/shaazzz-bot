@@ -1,12 +1,5 @@
 from consts import *
 
-REVIEW_TITLE = "📝 درخواست ویرایش"
-NAME_PREFIX = "👤 فرد: "
-USER_PREFIX = "🆔 کاربر: "
-MEDAL_PREFIX = "🎖 مدال جدید: "
-APPROVE_HINT = "برای تأیید، به این پیام پاسخ دهید: /approve"
-APPROVED_MARK = "✅ تأیید شد"
-
 
 def medal_line(medal):
     """[year, medal_index, title] -> 'سال 2024 | APIO | 🥈 نقره'."""
