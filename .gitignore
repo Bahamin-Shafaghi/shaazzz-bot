@@ -3,3 +3,4 @@
 .bot.lock
 __pycache__/
 .vscode/
+bot_state.pickle

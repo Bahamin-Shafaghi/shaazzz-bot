@@ -14,6 +14,7 @@ from telegram.ext import (
     CallbackQueryHandler,
     CommandHandler,
     MessageHandler,
+    PicklePersistence,
     filters,
 )
 
@@ -405,7 +406,7 @@ def main():
     token = os.getenv("TELEGRAM_BOT_TOKEN")
     if not token:
         raise RuntimeError("Set TELEGRAM_BOT_TOKEN in .env")
-    builder = Application.builder().token(token)
+    builder = Application.builder().token(token).persistence(PicklePersistence(ROOT / "bot_state.pickle"))
     proxy = os.getenv("TELEGRAM_PROXY_URL")
     if proxy:
         builder = builder.proxy(proxy).get_updates_proxy(proxy)
