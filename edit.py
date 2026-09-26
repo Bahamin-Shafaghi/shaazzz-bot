@@ -14,6 +14,14 @@ def apply_changes(data_path, name, changes):
     pass
 
 
+def add_medal(data_path, name, year, medal_index, title):
+    """Append a row `name,year,medal_index,title` to data/extra_medals.csv.
+
+    medal_index is an int indexing MEDAL_TEXTS (0 gold, 1 silver, 2 bronze, 3 honorable mention, 4 team member).
+    """
+    pass
+
+
 def reload_records(records):
     """Refresh the in-memory recordLoader after apply_changes so the bot shows
     the new values without a restart.

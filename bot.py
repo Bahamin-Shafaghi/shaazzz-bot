@@ -90,12 +90,18 @@ def profile_buttons(context, name):
 
 
 def edit_buttons():
-    rows = [[InlineKeyboardButton(label, callback_data=f"field:{field}")] for field, label in EXTRA_FIELDS.items()]
+    fields = [InlineKeyboardButton(label, callback_data=f"field:{field}") for field, label in EXTRA_FIELDS.items()]
+    fields.append(InlineKeyboardButton("🎖 مدال جدید", callback_data="field:medal"))
+    rows = [fields[i:i + 2] for i in range(0, len(fields), 2)]
     rows.append([
         InlineKeyboardButton("❌ لغو", callback_data="edit_cancel"),
         InlineKeyboardButton("✅ ثبت", callback_data="edit_submit"),
     ])
     return InlineKeyboardMarkup(rows)
+
+
+def cancel_buttons():
+    return InlineKeyboardMarkup([[InlineKeyboardButton("❌ لغو", callback_data="edit_cancel")]])
 
 
 # ---------- texts ----------
@@ -144,6 +150,10 @@ def year_panel(competition, year):
     return records.get_ioi(year) if competition == "ioi" else records.get_national(year)
 
 
+def medal_line(medal):
+    return "سال " + medal[0] + " | " + medal[2] + " | " + MEDAL_TEXTS[medal[1]]
+
+
 def edit_panel(editing):
     current = records.get_extra(editing["name"])
     ret = RTL + "✏️ ویرایش اطلاعات «" + editing["name"] + "»" + "\n\n"
@@ -152,11 +162,32 @@ def edit_panel(editing):
             ret += RTL + label + ": " + editing["changes"][field] + " 🆕" + "\n"
         else:
             ret += RTL + label + ": " + (current[field] or "—") + "\n"
-    if editing["waiting"]:
-        ret += "\n" + RTL + "✍️ مقدار جدید «" + EXTRA_FIELDS[editing["waiting"]] + "» را بفرستید." + "\n"
-    else:
-        ret += "\n" + RTL + "برای تغییر هر مورد روی دکمهٔ آن بزنید. تغییرات بعد از «ثبت» و تأیید مدیران اعمال می‌شوند." + "\n"
+    for medal in editing["medals"]:
+        ret += RTL + "🎖 مدال جدید: " + medal_line(medal) + " 🆕" + "\n"
+    ret += "\n" + RTL + "برای تغییر هر مورد روی دکمهٔ آن بزنید. تغییرات بعد از «ثبت» و تأیید مدیران اعمال می‌شوند." + "\n"
     return ret + "\n" + FOOTER
+
+
+def waiting_panel(field):
+    if field == "medal":
+        return (
+            RTL + "🎖 مدال جدید را در یک پیام به این شکل بفرستید:" + "\n"
+            + RTL + "سال ، عنوان ، شمارهٔ مدال" + "\n"
+            + RTL + "مثال: 2024 ، APIO ، 1" + "\n\n"
+            + "".join(RTL + str(i) + " = " + text + "\n" for i, text in enumerate(MEDAL_TEXTS))
+        )
+    return RTL + "✍️ مقدار جدید «" + EXTRA_FIELDS[field] + "» را بفرستید."
+
+
+def parse_medal(text):
+    """'2024 ، APIO ، 1' -> ['2024', 1, 'APIO'] (same order as extra_medals rows) or None."""
+    parts = [tools.normalize(part) for part in text.replace("،", ",").split(",")]
+    if len(parts) != 3 or not parts[0].isdigit() or not parts[1] or not parts[2].isdigit():
+        return None
+    index = int(parts[2])
+    if index >= len(MEDAL_TEXTS):
+        return None
+    return [parts[0], index, parts[1]]
 
 
 def review_panel(user, editing):
@@ -165,6 +196,8 @@ def review_panel(user, editing):
     ret += RTL + "🆔 کاربر: " + str(user.id) + (" (@" + user.username + ")" if user.username else "") + "\n\n"
     for field, value in editing["changes"].items():
         ret += RTL + EXTRA_FIELDS[field] + ": " + value + "\n"
+    for medal in editing["medals"]:
+        ret += RTL + "🎖 مدال جدید: " + medal_line(medal) + "\n"
     return ret + "\n" + RTL + "برای تأیید، به این پیام پاسخ دهید: /approve"
 
 
@@ -238,9 +271,13 @@ async def on_text(update, context):
 
 # ---------- editing ----------
 
-async def disable_panel(context, editing):
+async def disable_panel(context, editing, text=None):
+    """Remove the buttons of the current panel; optionally replace its text too."""
     try:
-        await context.bot.edit_message_reply_markup(chat_id=editing["chat_id"], message_id=editing["message_id"], reply_markup=None)
+        if text is None:
+            await context.bot.edit_message_reply_markup(chat_id=editing["chat_id"], message_id=editing["message_id"], reply_markup=None)
+        else:
+            await context.bot.edit_message_text(text, chat_id=editing["chat_id"], message_id=editing["message_id"], reply_markup=None, disable_web_page_preview=True)
     except BadRequest:
         pass
 
@@ -258,22 +295,29 @@ async def on_edit_input(update, context):
     if not update.message.text:
         await send(update.message, RTL + "لطفاً مقدار را به صورت متن بفرستید.", None)
         raise ApplicationHandlerStop
-    editing["changes"][editing["waiting"]] = tools.normalize(update.message.text)
+    if editing["waiting"] == "medal":
+        medal = parse_medal(update.message.text)
+        if medal is None:
+            await send(update.message, RTL + "فرمت درست نیست. مثل این بفرستید: 2024 ، APIO ، 1", None)
+            raise ApplicationHandlerStop
+        editing["medals"].append(medal)
+    else:
+        editing["changes"][editing["waiting"]] = tools.normalize(update.message.text)
     editing["waiting"] = None
-    await disable_panel(context, editing)
+    await disable_panel(context, editing, RTL + "✅ ارسال شد.")
     await send_edit_panel(context, editing)
     raise ApplicationHandlerStop
 
 
 async def submit_edit(query, context, editing):
-    if not editing["changes"]:
+    if not editing["changes"] and not editing["medals"]:
         await query.answer("هنوز تغییری نداده‌اید.", show_alert=True)
         return
     if not ADMIN_GROUP_ID:
         await edit(query, RTL + "امکان ویرایش فعلاً فعال نیست." + "\n\n" + FOOTER, default_buttons())
         return
     review = await context.bot.send_message(ADMIN_GROUP_ID, review_panel(query.from_user, editing), disable_web_page_preview=True)
-    context.bot_data.setdefault("pending", {})[review.message_id] = {"name": editing["name"], "changes": editing["changes"], "approved": False}
+    context.bot_data.setdefault("pending", {})[review.message_id] = {"name": editing["name"], "changes": editing["changes"], "medals": editing["medals"], "approved": False}
     del context.user_data["editing"]
     await edit(query, RTL + "✅ تغییرات ثبت شد. پس از تأیید مدیران اعمال می‌شود." + "\n\n" + FOOTER, default_buttons())
 
@@ -291,7 +335,10 @@ async def approve(update, context):
     if pending["approved"]:
         return
     pending["approved"] = True
-    editor.apply_changes(records.data_path, pending["name"], pending["changes"])
+    if pending["changes"]:
+        editor.apply_changes(records.data_path, pending["name"], pending["changes"])
+    for medal in pending["medals"]:
+        editor.add_medal(records.data_path, pending["name"], *medal)
     editor.reload_records(records)
     await send(update.message, RTL + "✅ تأیید شد و اعمال گردید.", None)
 
@@ -332,7 +379,7 @@ async def on_button(update, context):
         old = context.user_data.get("editing")
         if old:
             await disable_panel(context, old)
-        editing = {"name": name, "changes": {}, "waiting": None, "chat_id": query.message.chat_id, "message_id": query.message.message_id}
+        editing = {"name": name, "changes": {}, "medals": [], "waiting": None, "chat_id": query.message.chat_id, "message_id": query.message.message_id}
         context.user_data["editing"] = editing
         await edit(query, edit_panel(editing), edit_buttons())
     elif data.startswith("field:") or data in ("edit_cancel", "edit_submit"):
@@ -347,7 +394,7 @@ async def on_button(update, context):
             await submit_edit(query, context, editing)
         else:
             editing["waiting"] = data[6:]
-            await edit(query, edit_panel(editing), edit_buttons())
+            await edit(query, waiting_panel(editing["waiting"]), cancel_buttons())
 
 
 async def on_error(update, context):
