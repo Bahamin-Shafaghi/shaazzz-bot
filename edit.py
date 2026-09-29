@@ -1,4 +1,7 @@
+import csv
+
 from consts import *
+from search import personSearch
 
 
 def medal_line(medal):
@@ -43,29 +46,38 @@ def parse_review(text):
     return name, changes, medals
 
 
-def apply_changes(data_path, name, changes):
-    """Write approved edits into data/person_extra.csv.
+def apply_changes(records, name, changes):
+    """Apply approved edits to the in-memory records (nothing is written to disk here).
 
-    name:    the person's stored name (exactly as it appears in the CSVs)
-    changes: {field: new_value} where field is a key of EXTRA_FIELDS
-             (highschool, university, codeforces, linkedin, note)
-
-    Should update the person's row if it exists, or add a new row otherwise,
-    leaving untouched fields as they are.
+    changes: {field: new_value} where field is a key of EXTRA_FIELDS.
+    Each extra field is stored as a single-element list [[value]], the same shape the loader builds.
     """
-    pass
+    for field, value in changes.items():
+        records.person_data[name][field] = [[value]]
 
 
-def add_medal(data_path, name, year, medal_index, title):
-    """Append a row `name,year,medal_index,title` to data/extra_medals.csv.
-
-    medal_index is an int indexing MEDAL_TEXTS (0 gold, 1 silver, 2 bronze, 3 honorable mention, 4 team member).
-    """
-    pass
+def add_medal(records, name, year, medal_index, title):
+    """Add a medal [year, medal_index, title] to the person's in-memory extra_medals."""
+    records.person_data[name]["extra_medals"].append([str(year), int(medal_index), title])
 
 
 def reload_records(records):
-    """Refresh the in-memory recordLoader after apply_changes so the bot shows
-    the new values without a restart.
+    """Write the editable data back from `records` into the CSV files and rebuild the search index.
+
+    Only person_extra.csv and extra_medals.csv are regenerated (the competition files never change).
+    A person gets a row in person_extra.csv only if at least one extra field is non-empty.
     """
-    pass
+    with open(records.data_path / PERSON_EXTRA_FILE, "w", encoding="utf-8-sig", newline="") as f:
+        writer = csv.writer(f)
+        writer.writerow(["name"] + list(EXTRA_FIELDS))
+        for name, person in records.person_data.items():
+            values = [person[field][0][0] if field in person else "" for field in EXTRA_FIELDS]
+            if any(values):
+                writer.writerow([name] + values)
+    with open(records.data_path / EXTRA_MEDALS_FILE, "w", encoding="utf-8-sig", newline="") as f:
+        writer = csv.writer(f)
+        writer.writerow(["name", "year", "medal_index", "title"])
+        for name, person in records.person_data.items():
+            for year, medal_index, title in person.get("extra_medals", []):
+                writer.writerow([name, year, medal_index, title])
+    records.search = personSearch(records.person_data)

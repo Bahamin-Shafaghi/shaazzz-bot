@@ -316,9 +316,9 @@ async def approve(update, context):
         return
     name, changes, medals = parsed
     if changes:
-        editor.apply_changes(records.data_path, name, changes)
+        editor.apply_changes(records, name, changes)
     for medal in medals:
-        editor.add_medal(records.data_path, name, *medal)
+        editor.add_medal(records, name, *medal)
     editor.reload_records(records)
     await send(update.message, RTL + "✅ تأیید شد و اعمال گردید.", None)
 

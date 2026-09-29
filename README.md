@@ -53,7 +53,7 @@ The query is also matched word by word against the name's words in any order (`�
 
 Every profile has a `✏️ ویرایش اطلاعات` button. It opens an editing panel listing the five extra fields (current values, `—` when empty) with one button per field, a `🎖 مدال جدید` button, plus `❌ لغو` / `✅ ثبت`. Tapping a field replaces the panel with just a prompt and a cancel button; the next message the user sends (any text, even a command) becomes the new value. A new medal is entered in one message as `سال ، عنوان ، شمارهٔ مدال` (e.g. `2024 ، APIO ، 1`, index into `MEDAL_TEXTS`). The old panel is then replaced by "✅ ارسال شد." with no buttons and a fresh panel is sent showing the pending values marked `🆕`. Fields can be changed as many times as wanted; nothing is written until approval.
 
-`✅ ثبت` posts the request (user id, person, changed fields) to the group in `TELEGRAM_ADMIN_GROUP_ID` and tells the user it awaits admin approval. An admin approves by replying `/approve` to that message. `/approve` only works in that group and only as a reply to a bot message; nothing is stored anywhere — the bot re-reads the replied message with `edit.parse_review(text)` (the inverse of `edit.review_text`) to get the person, the changed fields and the new medals, then calls `edit.apply_changes(data_path, name, changes)`, `edit.add_medal(data_path, name, year, medal_index, title)` and `edit.reload_records(records)` (currently stubs). Before applying, the review message is edited to end with `✅ تأیید شد`; a message that already carries that mark is ignored, so only the first approval counts, no matter how much later it happens or how many other requests exist.
+`✅ ثبت` posts the request (user id, person, changed fields) to the group in `TELEGRAM_ADMIN_GROUP_ID` and tells the user it awaits admin approval. An admin approves by replying `/approve` to that message. `/approve` only works in that group and only as a reply to a bot message; nothing is stored anywhere — the bot re-reads the replied message with `edit.parse_review(text)` (the inverse of `edit.review_text`) to get the person, the changed fields and the new medals, then calls `edit.apply_changes(records, name, changes)` and `edit.add_medal(records, name, year, medal_index, title)`, which only change the in-memory `records`, followed by `edit.reload_records(records)`, which rewrites `person_extra.csv` and `extra_medals.csv` from `records` and rebuilds the search index. Before applying, the review message is edited to end with `✅ تأیید شد`; a message that already carries that mark is ignored, so only the first approval counts, no matter how much later it happens or how many other requests exist.
 
 ## Code layout
 
@@ -62,7 +62,7 @@ Every profile has a `✏️ ویرایش اطلاعات` button. It opens an edi
 | `bot.py` | Telegram handlers, keyboards, command parsing |
 | `records.py` | `recordLoader`: loads the CSVs, builds year/profile texts |
 | `search.py` | `personSearch`: exact/ranked fuzzy name search |
-| `edit.py` | applying approved profile edits to the CSV (stubs) |
+| `edit.py` | review-message serializer/parser and applying approved edits (in memory, then written back to the CSVs) |
 | `tools.py` | digit normalisation, search key, دوره→year, flags |
 | `consts.py` | file names, medal labels, search constants, country codes |
 
@@ -103,7 +103,7 @@ Additional medals (e.g. other olympiads) listed in a profile; `medal_index` is 0
 
 ```csv
 # person_extra.csv
-name,note,highschool,linkedin,codeforces,university
+name,highschool,university,codeforces,linkedin,note
 ```
 
 Optional profile fields, shown only when non-empty: 🏫 دبیرستان, 🎓 دانشگاه, 💻 هندل کدفورسز, 🔗 لینکدین, 📝 یادداشت. Wrap values containing commas in double quotes. Restart the bot after editing any data file.
