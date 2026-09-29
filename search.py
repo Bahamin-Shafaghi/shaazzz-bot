@@ -1,7 +1,7 @@
 import difflib
 from collections import defaultdict
 
-import tools
+import utils
 from consts import *
 
 
@@ -33,16 +33,16 @@ class personSearch:
         self.keys = {}
         self.tokens = {}
         for person in self.names:
-            key = tools.search_key(person)
+            key = utils.search_key(person)
             self.search_index[key].append(person)
             self.keys[person] = key
-            self.tokens[person] = [tools.search_key(word) for word in tools.normalize(person).split()]
+            self.tokens[person] = [utils.search_key(word) for word in utils.normalize(person).split()]
 
     def get_exact(self, name):
-        name = tools.normalize(name)
-        if name in self.search_index.get(tools.search_key(name), []):
+        name = utils.normalize(name)
+        if name in self.search_index.get(utils.search_key(name), []):
             return [name]
-        return self.search_index.get(tools.search_key(name), [])
+        return self.search_index.get(utils.search_key(name), [])
 
     def has_person(self, name):
         return len(self.get_exact(name)) == 1
@@ -57,8 +57,8 @@ class personSearch:
         return best - 0.001 * len(self.keys[person])
 
     def get_matching(self, name):
-        query_key = tools.search_key(name)
-        query_tokens = [tools.search_key(word) for word in tools.normalize(name).split()]
+        query_key = utils.search_key(name)
+        query_tokens = [utils.search_key(word) for word in utils.normalize(name).split()]
         if not query_key or not query_tokens:
             return []
         scored = ((self.score(query_key, query_tokens, person), person) for person in self.names)

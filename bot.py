@@ -165,7 +165,7 @@ def waiting_panel(field):
 
 def parse_medal(text):
     """'2024 ، APIO ، 1' -> ['2024', 1, 'APIO'] (same order as extra_medals rows) or None."""
-    parts = [tools.normalize(part) for part in text.replace("،", ",").split(",")]
+    parts = [utils.normalize(part) for part in text.replace("،", ",").split(",")]
     if len(parts) != 3 or not parts[0].isdigit() or not parts[1] or not parts[2].isdigit():
         return None
     index = int(parts[2])
@@ -191,7 +191,7 @@ async def edit(query, text, keyboard, parse_mode=None):
 # ---------- person search ----------
 
 async def person_result(message, context, name):
-    name = tools.normalize(name)
+    name = utils.normalize(name)
     if records.search.has_person(name):
         name = records.search.get_exact(name)[0]
         await send(message, records.get_profile(name), profile_buttons())
@@ -221,8 +221,8 @@ async def help_command(update, context):
 
 def split_command(text):
     """'جستجو علی رضا' -> ('جستجو', 'علی رضا'); 'ملی' -> ('ملی', '')."""
-    word, _, rest = tools.normalize(text).partition(" ")
-    return word, tools.normalize(rest)
+    word, _, rest = utils.normalize(text).partition(" ")
+    return word, utils.normalize(rest)
 
 
 async def on_text(update, context):
@@ -274,7 +274,7 @@ async def on_edit_input(update, context):
             raise ApplicationHandlerStop
         editing["medals"].append(medal)
     else:
-        editing["changes"][editing["waiting"]] = tools.normalize(update.message.text)
+        editing["changes"][editing["waiting"]] = utils.normalize(update.message.text)
     editing["waiting"] = None
     await disable_panel(context, editing, RTL + "✅ ارسال شد.")
     await send_edit_panel(context, editing)
