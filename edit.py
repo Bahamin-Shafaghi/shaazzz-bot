@@ -50,10 +50,10 @@ def apply_changes(records, name, changes):
     """Apply approved edits to the in-memory records (nothing is written to disk here).
 
     changes: {field: new_value} where field is a key of EXTRA_FIELDS.
-    Each extra field is stored as a single-element list [[value]], the same shape the loader builds.
+    Extra fields are plain strings on the person, the same shape the loader builds.
     """
     for field, value in changes.items():
-        records.person_data[name][field] = [[value]]
+        records.person_data[name][field] = value
 
 
 def add_medal(records, name, year, medal_index, title):
@@ -71,7 +71,7 @@ def reload_records(records):
         writer = csv.writer(f)
         writer.writerow(["name"] + list(EXTRA_FIELDS))
         for name, person in records.person_data.items():
-            values = [person[field][0][0] if field in person else "" for field in EXTRA_FIELDS]
+            values = [person.get(field, "") for field in EXTRA_FIELDS]
             if any(values):
                 writer.writerow([name] + values)
     with open(records.data_path / EXTRA_MEDALS_FILE, "w", encoding="utf-8-sig", newline="") as f:

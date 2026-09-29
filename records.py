@@ -25,11 +25,11 @@ class recordLoader:
                 self.person_data[utils.normalize(row["name"])]["extra_medals"].append([utils.normalize(row["year"]), int(row["medal_index"]), row["title"]])
         with open(self.data_path / PERSON_EXTRA_FILE, encoding="utf-8-sig", newline="") as f:
             for row in csv.DictReader(f):
-                self.person_data[utils.normalize(row["name"])]["note"].append([utils.normalize(row["note"])])
-                self.person_data[utils.normalize(row["name"])]["highschool"].append([utils.normalize(row["highschool"])])
-                self.person_data[utils.normalize(row["name"])]["linkedin"].append([utils.normalize(row["linkedin"])])
-                self.person_data[utils.normalize(row["name"])]["codeforces"].append([utils.normalize(row["codeforces"])])
-                self.person_data[utils.normalize(row["name"])]["university"].append([utils.normalize(row["university"])])
+                self.person_data[utils.normalize(row["name"])]["note"] = utils.normalize(row["note"])
+                self.person_data[utils.normalize(row["name"])]["highschool"] = utils.normalize(row["highschool"])
+                self.person_data[utils.normalize(row["name"])]["linkedin"] = utils.normalize(row["linkedin"])
+                self.person_data[utils.normalize(row["name"])]["codeforces"] = utils.normalize(row["codeforces"])
+                self.person_data[utils.normalize(row["name"])]["university"] = utils.normalize(row["university"])
         
         self.national_data = defaultdict(lambda: defaultdict(list))
         with open(self.data_path / NATIONAL_RECORDS_FILE, encoding="utf-8-sig", newline="") as f:
@@ -107,21 +107,21 @@ class recordLoader:
             ret += RTL + "• سال " + str(medal[0]) + " | " + "IOI" + " | " + MEDAL_TEXTS[medal[1]] + "\n"
         for medal in self.person_data[name]["extra_medals"]:
             ret += RTL + "• سال " + str(medal[0]) + " | " + medal[2] + " | " + MEDAL_TEXTS[medal[1]] + "\n"
-        if "highschool" in self.person_data[name] and self.person_data[name]["highschool"][0][0]:
-            ret += RTL + "\n" + "🏫 دبیرستان: " + self.person_data[name]["highschool"][0][0] + "\n"
-        if "university" in self.person_data[name] and self.person_data[name]["university"][0][0]:
-            ret += RTL + "\n" + "🎓 دانشگاه: " + self.person_data[name]["university"][0][0] + "\n"
-        if "codeforces" in self.person_data[name] and self.person_data[name]["codeforces"][0][0]:
-            ret += RTL + "\n" + "💻 هندل کدفورسز: " + self.person_data[name]["codeforces"][0][0] + "\n"
-        if "linkedin" in self.person_data[name] and self.person_data[name]["linkedin"][0][0]:
-            ret += RTL + "\n" + "🔗 لینکدین: " + self.person_data[name]["linkedin"][0][0] + "\n"
-        if "note" in self.person_data[name] and self.person_data[name]["note"][0][0]:
-            ret += RTL + "\n" + "📝 یادداشت: " + self.person_data[name]["note"][0][0] + "\n"
+        if self.person_data[name].get("highschool", ""):
+            ret += RTL + "\n" + "🏫 دبیرستان: " + self.person_data[name]["highschool"] + "\n"
+        if self.person_data[name].get("university", ""):
+            ret += RTL + "\n" + "🎓 دانشگاه: " + self.person_data[name]["university"] + "\n"
+        if self.person_data[name].get("codeforces", ""):
+            ret += RTL + "\n" + "💻 هندل کدفورسز: " + self.person_data[name]["codeforces"] + "\n"
+        if self.person_data[name].get("linkedin", ""):
+            ret += RTL + "\n" + "🔗 لینکدین: " + self.person_data[name]["linkedin"] + "\n"
+        if self.person_data[name].get("note", ""):
+            ret += RTL + "\n" + "📝 یادداشت: " + self.person_data[name]["note"] + "\n"
         return ret + "\n" + FOOTER
 
     def get_extra(self, name):
         name = utils.normalize(name)
-        return {field: self.person_data[name][field][0][0] if field in self.person_data[name] else "" for field in EXTRA_FIELDS}
+        return {field: self.person_data[name].get(field, "") for field in EXTRA_FIELDS}
 
     def get_ioi(self, year):
         year = utils.normalize(year)
