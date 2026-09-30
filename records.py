@@ -1,4 +1,5 @@
 import csv
+import html
 from collections import defaultdict
 
 import utils
@@ -86,7 +87,7 @@ class recordLoader:
         name = exact[0] if len(exact) == 1 else utils.normalize(name)
         if name not in self.person_data:
             return RTL + "این فرد در دیتابیس موجود نیست" + "\n\n" + FOOTER
-        ret = RTL + "🔎 نتیجهٔ جست‌وجو برای «" + name + "»" + "\n\n" + RTL + "👤 " + name + "\n"
+        ret = RTL + "🔎 نتیجهٔ جست‌وجو برای «" + html.escape(name) + "»" + "\n\n" + RTL + "👤 " + html.escape(name) + "\n"
         for medal in self.person_data[name]["national"]:
             if int(medal[0]) >= FIRST_SORTED_YEAR:
                 ret += RTL + "• سال " + str(medal[0]) + " | " + "INOI" + " | " + MEDAL_TEXTS[medal[1]] + " "
@@ -106,17 +107,17 @@ class recordLoader:
         for medal in self.person_data[name]["ioi"]:
             ret += RTL + "• سال " + str(medal[0]) + " | " + "IOI" + " | " + MEDAL_TEXTS[medal[1]] + "\n"
         for medal in self.person_data[name]["extra_medals"]:
-            ret += RTL + "• سال " + str(medal[0]) + " | " + medal[2] + " | " + MEDAL_TEXTS[medal[1]] + "\n"
+            ret += RTL + "• سال " + str(medal[0]) + " | " + html.escape(medal[2]) + " | " + MEDAL_TEXTS[medal[1]] + "\n"
         if self.person_data[name].get("highschool", ""):
-            ret += RTL + "\n" + "🏫 دبیرستان: " + self.person_data[name]["highschool"] + "\n"
+            ret += RTL + "\n" + "🏫 دبیرستان: " + html.escape(self.person_data[name]["highschool"]) + "\n"
         if self.person_data[name].get("university", ""):
-            ret += RTL + "\n" + "🎓 دانشگاه: " + self.person_data[name]["university"] + "\n"
+            ret += RTL + "\n" + "🎓 دانشگاه: " + html.escape(self.person_data[name]["university"]) + "\n"
         if self.person_data[name].get("codeforces", ""):
-            ret += RTL + "\n" + "💻 هندل کدفورسز: " + self.person_data[name]["codeforces"] + "\n"
+            ret += RTL + "\n" + "💻 هندل کدفورسز: " + utils.codeforces_link(self.person_data[name]["codeforces"]) + "\n"
         if self.person_data[name].get("linkedin", ""):
-            ret += RTL + "\n" + "🔗 لینکدین: " + self.person_data[name]["linkedin"] + "\n"
+            ret += RTL + "\n" + "🔗 لینکدین: " + html.escape(self.person_data[name]["linkedin"]) + "\n"
         if self.person_data[name].get("note", ""):
-            ret += RTL + "\n" + "📝 یادداشت: " + self.person_data[name]["note"] + "\n"
+            ret += RTL + "\n" + "📝 یادداشت: " + html.escape(self.person_data[name]["note"]) + "\n"
         return ret + "\n" + FOOTER
 
     def get_extra(self, name):

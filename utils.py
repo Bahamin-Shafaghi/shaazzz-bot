@@ -1,4 +1,11 @@
+import html
+from urllib.parse import quote
+
 from consts import *
+
+
+def codeforces_link(handle):
+    return '<a href="' + CODEFORCES_URL + quote(handle) + '">' + html.escape(handle) + '</a>'
 
 
 def english_digits(string):

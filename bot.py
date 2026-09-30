@@ -140,14 +140,18 @@ def year_panel(competition, year):
 
 def edit_panel(editing):
     current = records.get_extra(editing["name"])
-    ret = RTL + "✏️ ویرایش اطلاعات «" + editing["name"] + "»" + "\n\n"
+    ret = RTL + "✏️ ویرایش اطلاعات «" + escape(editing["name"]) + "»" + "\n\n"
     for field, label in EXTRA_FIELDS.items():
         if field in editing["changes"]:
-            ret += RTL + label + ": " + editing["changes"][field] + " 🆕" + "\n"
+            value = editing["changes"][field]
+            rendered = utils.codeforces_link(value) if field == "codeforces" and value else escape(value) if value else "—"
+            ret += RTL + label + ": " + rendered + " 🆕" + "\n"
         else:
-            ret += RTL + label + ": " + (current[field] or "—") + "\n"
+            value = current[field]
+            rendered = utils.codeforces_link(value) if field == "codeforces" and value else escape(value) if value else "—"
+            ret += RTL + label + ": " + rendered + "\n"
     for medal in editing["medals"]:
-        ret += RTL + editor.MEDAL_PREFIX + editor.medal_line(medal) + " 🆕" + "\n"
+        ret += RTL + editor.MEDAL_PREFIX + escape(editor.medal_line(medal)) + " 🆕" + "\n"
     ret += "\n" + RTL + "برای تغییر هر مورد روی دکمهٔ آن بزنید. تغییرات بعد از «ثبت» و تأیید مدیران اعمال می‌شوند." + "\n"
     return ret + "\n" + FOOTER
 
@@ -194,7 +198,7 @@ async def person_result(message, context, name):
     name = utils.normalize(name)
     if records.search.has_person(name):
         name = records.search.get_exact(name)[0]
-        await send(message, records.get_profile(name), profile_buttons())
+        await send(message, records.get_profile(name), profile_buttons(), parse_mode=ParseMode.HTML)
         return
 
     suggestions = records.search.get_matching(name) or records.search.get_similar(name)
@@ -255,7 +259,7 @@ async def disable_panel(context, editing, text=None):
 
 
 async def send_edit_panel(context, editing):
-    message = await context.bot.send_message(editing["chat_id"], edit_panel(editing), reply_markup=edit_buttons(), disable_web_page_preview=True)
+    message = await context.bot.send_message(editing["chat_id"], edit_panel(editing), reply_markup=edit_buttons(), parse_mode=ParseMode.HTML, disable_web_page_preview=True)
     editing["message_id"] = message.message_id
 
 
@@ -288,7 +292,7 @@ async def submit_edit(query, context, editing):
     if not ADMIN_GROUP_ID:
         await edit(query, RTL + "امکان ویرایش فعلاً فعال نیست." + "\n\n" + FOOTER, default_buttons())
         return
-    await context.bot.send_message(ADMIN_GROUP_ID, editor.review_text(query.from_user, editing["name"], editing["changes"], editing["medals"]), disable_web_page_preview=True)
+    await context.bot.send_message(ADMIN_GROUP_ID, editor.review_text(query.from_user, editing["name"], editing["changes"], editing["medals"]), parse_mode=ParseMode.HTML, disable_web_page_preview=True)
     del context.user_data["editing"]
     await edit(query, RTL + "✅ تغییرات ثبت شد. پس از تأیید مدیران اعمال می‌شود." + "\n\n" + FOOTER, default_buttons())
 
@@ -309,9 +313,9 @@ async def approve(update, context):
         return
     if editor.APPROVED_MARK in replied.text:
         return
-    marked = replied.text.replace(editor.APPROVE_HINT, editor.APPROVED_MARK)
+    marked = replied.text_html.replace(editor.APPROVE_HINT, editor.APPROVED_MARK)
     try:
-        await replied.edit_text(marked, disable_web_page_preview=True)
+        await replied.edit_text(marked, parse_mode=ParseMode.HTML, disable_web_page_preview=True)
     except BadRequest:
         return
     name, changes, medals = parsed
@@ -366,7 +370,7 @@ async def on_button(update, context):
         if not name or not records.search.has_person(name):
             await edit(query, RTL + "این پیشنهاد دیگر در دسترس نیست. دوباره نام را جست‌وجو کنید." + "\n\n" + FOOTER, default_buttons())
             return
-        await edit(query, records.get_profile(name), profile_buttons())
+        await edit(query, records.get_profile(name), profile_buttons(), parse_mode=ParseMode.HTML)
     elif data == "edit":
         name = profile_name(query)
         if not name or not records.search.has_person(name):
@@ -377,7 +381,7 @@ async def on_button(update, context):
             await disable_panel(context, old)
         editing = {"name": name, "changes": {}, "medals": [], "waiting": None, "chat_id": query.message.chat_id, "message_id": query.message.message_id}
         context.user_data["editing"] = editing
-        await edit(query, edit_panel(editing), edit_buttons())
+        await edit(query, edit_panel(editing), edit_buttons(), parse_mode=ParseMode.HTML)
     elif data.startswith("field:") or data in ("edit_cancel", "edit_submit"):
         editing = context.user_data.get("editing")
         if not editing or editing["message_id"] != query.message.message_id:

@@ -1,5 +1,7 @@
 import csv
+import html
 
+import utils
 from consts import *
 from search import personSearch
 
@@ -10,12 +12,13 @@ def medal_line(medal):
 
 def review_text(user, name, changes, medals):
     ret = REVIEW_TITLE + "\n\n"
-    ret += RTL + NAME_PREFIX + name + "\n"
-    ret += RTL + USER_PREFIX + str(user.id) + (" (@" + user.username + ")" if user.username else "") + "\n\n"
+    ret += RTL + NAME_PREFIX + html.escape(name) + "\n"
+    ret += RTL + USER_PREFIX + str(user.id) + (" (@" + html.escape(user.username) + ")" if user.username else "") + "\n\n"
     for field, value in changes.items():
-        ret += RTL + EXTRA_FIELDS[field] + ": " + value + "\n"
+        rendered = utils.codeforces_link(value) if field == "codeforces" and value else html.escape(value)
+        ret += RTL + EXTRA_FIELDS[field] + ": " + rendered + "\n"
     for medal in medals:
-        ret += RTL + MEDAL_PREFIX + medal_line(medal) + "\n"
+        ret += RTL + MEDAL_PREFIX + html.escape(medal_line(medal)) + "\n"
     return ret + "\n" + RTL + APPROVE_HINT
 
 
