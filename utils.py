@@ -1,4 +1,5 @@
 import html
+import re
 from urllib.parse import quote
 
 from consts import *
@@ -6,6 +7,18 @@ from consts import *
 
 def codeforces_link(handle):
     return '<a href="' + CODEFORCES_URL + quote(handle) + '">' + html.escape(handle) + '</a>'
+
+
+def split_handles(text):
+    return list(dict.fromkeys(handle for handle in re.split(r"[\s,،]+", normalize(text)) if handle))
+
+
+def valid_handle(handle):
+    return re.fullmatch(r"[A-Za-z0-9_.\-]+", handle) is not None
+
+
+def codeforces_links(handles):
+    return HANDLE_SEPARATOR.join(codeforces_link(handle) for handle in handles)
 
 
 def english_digits(string):

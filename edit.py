@@ -15,7 +15,7 @@ def review_text(user, name, changes, medals):
     ret += RTL + NAME_PREFIX + html.escape(name) + "\n"
     ret += RTL + USER_PREFIX + str(user.id) + (" (@" + html.escape(user.username) + ")" if user.username else "") + "\n\n"
     for field, value in changes.items():
-        rendered = utils.codeforces_link(value) if field == "codeforces" and value else html.escape(value)
+        rendered = utils.codeforces_links(value) if field == "codeforces" else html.escape(value)
         ret += RTL + EXTRA_FIELDS[field] + ": " + rendered + "\n"
     for medal in medals:
         ret += RTL + MEDAL_PREFIX + html.escape(medal_line(medal)) + "\n"
@@ -37,7 +37,8 @@ def parse_review(text):
         else:
             for prefix, field in labels.items():
                 if line.startswith(prefix):
-                    changes[field] = line[len(prefix):]
+                    value = line[len(prefix):]
+                    changes[field] = utils.split_handles(value) if field == "codeforces" else value
     if name is None:
         return None
     return name, changes, medals
@@ -57,7 +58,7 @@ def reload_records(records):
         writer = csv.writer(f)
         writer.writerow(["name"] + list(EXTRA_FIELDS))
         for name, person in records.person_data.items():
-            values = [person.get(field, "") for field in EXTRA_FIELDS]
+            values = [" ".join(person.get(field, [])) if field == "codeforces" else person.get(field, "") for field in EXTRA_FIELDS]
             if any(values):
                 writer.writerow([name] + values)
     with open(records.data_path / EXTRA_MEDALS_FILE, "w", encoding="utf-8-sig", newline="") as f:

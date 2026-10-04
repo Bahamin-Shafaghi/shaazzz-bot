@@ -29,7 +29,7 @@ class recordLoader:
                 self.person_data[utils.normalize(row["name"])]["note"] = utils.normalize(row["note"])
                 self.person_data[utils.normalize(row["name"])]["highschool"] = utils.normalize(row["highschool"])
                 self.person_data[utils.normalize(row["name"])]["linkedin"] = utils.normalize(row["linkedin"])
-                self.person_data[utils.normalize(row["name"])]["codeforces"] = utils.normalize(row["codeforces"])
+                self.person_data[utils.normalize(row["name"])]["codeforces"] = utils.split_handles(row["codeforces"])
                 self.person_data[utils.normalize(row["name"])]["university"] = utils.normalize(row["university"])
         
         self.national_data = defaultdict(lambda: defaultdict(list))
@@ -112,8 +112,8 @@ class recordLoader:
             ret += RTL + "\n" + "🏫 دبیرستان: " + html.escape(self.person_data[name]["highschool"]) + "\n"
         if self.person_data[name].get("university", ""):
             ret += RTL + "\n" + "🎓 دانشگاه: " + html.escape(self.person_data[name]["university"]) + "\n"
-        if self.person_data[name].get("codeforces", ""):
-            ret += RTL + "\n" + "💻 هندل کدفورسز: " + utils.codeforces_link(self.person_data[name]["codeforces"]) + "\n"
+        if self.person_data[name].get("codeforces", []):
+            ret += RTL + "\n" + "💻 هندل کدفورسز: " + utils.codeforces_links(self.person_data[name]["codeforces"]) + "\n"
         if self.person_data[name].get("linkedin", ""):
             ret += RTL + "\n" + "🔗 لینکدین: " + html.escape(self.person_data[name]["linkedin"]) + "\n"
         if self.person_data[name].get("note", ""):
@@ -122,7 +122,7 @@ class recordLoader:
 
     def get_extra(self, name):
         name = utils.normalize(name)
-        return {field: self.person_data[name].get(field, "") for field in EXTRA_FIELDS}
+        return {field: self.person_data[name].get(field, [] if field == "codeforces" else "") for field in EXTRA_FIELDS}
 
     def get_ioi(self, year):
         year = utils.normalize(year)

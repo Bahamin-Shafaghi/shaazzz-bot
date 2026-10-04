@@ -2,6 +2,7 @@ YEARS_PER_ROW = 4
 NATIONAL_FIRST_YEAR = 1369  # year of دوره 0; دوره N was held in NATIONAL_FIRST_YEAR + N
 FOOTER = "📣 https://t.me/shaazzz\n🌐 https://shaazzz.ir"
 CODEFORCES_URL = "https://codeforces.com/profile/"
+HANDLE_SEPARATOR = " ، "
 MEDALS = ["🥇", "🥈", "🥉", "🎖"]
 MEDAL_TEXTS = ["🥇 طلا", "🥈 نقره", "🥉 برنز", "🎖 دیپلم افتخار", "عضو تیم"]
 IOI_HISTORY_FILE = "ioi_history.csv"

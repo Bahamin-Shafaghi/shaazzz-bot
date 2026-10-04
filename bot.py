@@ -144,11 +144,11 @@ def edit_panel(editing):
     for field, label in EXTRA_FIELDS.items():
         if field in editing["changes"]:
             value = editing["changes"][field]
-            rendered = utils.codeforces_link(value) if field == "codeforces" and value else escape(value) if value else "—"
+            rendered = (utils.codeforces_links(value) if field == "codeforces" else escape(value)) or "—"
             ret += RTL + label + ": " + rendered + " 🆕" + "\n"
         else:
             value = current[field]
-            rendered = utils.codeforces_link(value) if field == "codeforces" and value else escape(value) if value else "—"
+            rendered = (utils.codeforces_links(value) if field == "codeforces" else escape(value)) or "—"
             ret += RTL + label + ": " + rendered + "\n"
     for medal in editing["medals"]:
         ret += RTL + editor.MEDAL_PREFIX + escape(editor.medal_line(medal)) + " 🆕" + "\n"
@@ -163,6 +163,12 @@ def waiting_panel(field):
             + RTL + "سال ، عنوان ، شمارهٔ مدال" + "\n"
             + RTL + "مثال: 2024 ، APIO ، 1" + "\n\n"
             + "".join(RTL + str(i) + " = " + text + "\n" for i, text in enumerate(MEDAL_TEXTS))
+        )
+    if field == "codeforces":
+        return (
+            RTL + "✍️ هندل‌های کدفورسز را به ترتیب در یک پیام بفرستید (با فاصله، کاما یا خط جدید جدا کنید)." + "\n"
+            + RTL + "این لیست جایگزین لیست قبلی می‌شود." + "\n"
+            + RTL + "مثال: tourist Benq"
         )
     return RTL + "✍️ مقدار جدید «" + EXTRA_FIELDS[field] + "» را بفرستید."
 
@@ -277,6 +283,12 @@ async def on_edit_input(update, context):
             await send(update.message, RTL + "فرمت درست نیست. مثل این بفرستید: 2024 ، APIO ، 1", None)
             raise ApplicationHandlerStop
         editing["medals"].append(medal)
+    elif editing["waiting"] == "codeforces":
+        handles = utils.split_handles(update.message.text)
+        if not handles or any(not utils.valid_handle(handle) for handle in handles):
+            await send(update.message, RTL + "هندل نامعتبر است. فقط حروف انگلیسی، عدد و _ . - مجاز است. دوباره بفرستید.", None)
+            raise ApplicationHandlerStop
+        editing["changes"]["codeforces"] = handles
     else:
         editing["changes"][editing["waiting"]] = utils.normalize(update.message.text)
     editing["waiting"] = None
