@@ -424,12 +424,13 @@ def main():
         logger.info("Using proxy %s", proxy.split("@")[-1])
     application = builder.build()
 
-    application.add_handler(MessageHandler(filters.ALL, on_edit_input), group=-1)
-    application.add_handler(CommandHandler("approve", approve, filters=filters.Chat(ADMIN_GROUP_ID)))
-    application.add_handler(CommandHandler("start", start))
-    application.add_handler(CommandHandler("help", help_command))
+    new_message = filters.UpdateType.MESSAGE
+    application.add_handler(MessageHandler(new_message, on_edit_input), group=-1)
+    application.add_handler(CommandHandler("approve", approve, filters=new_message & filters.Chat(ADMIN_GROUP_ID)))
+    application.add_handler(CommandHandler("start", start, filters=new_message))
+    application.add_handler(CommandHandler("help", help_command, filters=new_message))
     application.add_handler(CallbackQueryHandler(on_button))
-    application.add_handler(MessageHandler(filters.TEXT & ~filters.COMMAND, on_text))
+    application.add_handler(MessageHandler(new_message & filters.TEXT & ~filters.COMMAND, on_text))
     application.add_error_handler(on_error)
 
     application.run_polling(allowed_updates=Update.ALL_TYPES, drop_pending_updates=False, bootstrap_retries=-1)
