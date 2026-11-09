@@ -29,6 +29,10 @@ def normalize(string):
     return english_digits(string).strip(" ")
 
 
+def single_line(string):
+    return " ".join(english_digits(string).split())
+
+
 def search_key(string):
     return normalize(string).lower().translate(PERSIAN_LETTERS)
 

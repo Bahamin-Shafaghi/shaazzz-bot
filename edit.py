@@ -29,10 +29,11 @@ def parse_review(text):
     labels = {label + ": ": field for field, label in EXTRA_FIELDS.items()}
     for line in text.split("\n"):
         line = line.replace(RTL, "").strip()
-        if line.startswith(NAME_PREFIX):
+        if line.startswith(NAME_PREFIX) and name is None:
             name = line[len(NAME_PREFIX):]
         elif line.startswith(MEDAL_PREFIX):
-            year, title, medal_text = line[len(MEDAL_PREFIX):].split(" | ", 2)
+            year, rest = line[len(MEDAL_PREFIX):].split(" | ", 1)
+            title, medal_text = rest.rsplit(" | ", 1)
             medals.append([year.replace("سال ", ""), MEDAL_TEXTS.index(medal_text), title])
         else:
             for prefix, field in labels.items():
